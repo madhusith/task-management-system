@@ -4,6 +4,7 @@ require('dotenv').config();
 const { connectDB } = require('./config/database');
 const User = require('./models/User');
 const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
@@ -39,6 +40,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 
 // ─── WebSocket connection ─────────────────────────────────────
 io.on('connection', (socket) => {
