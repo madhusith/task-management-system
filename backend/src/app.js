@@ -3,8 +3,22 @@ require('dotenv').config();
 
 const { connectDB } = require('./config/database');
 const User = require('./models/User');
+const Task = require('./models/Task');
+const Comment = require('./models/Comment');
+
+// Define relationships
+User.hasMany(Task, { foreignKey: 'assignedTo', as: 'assignedTasks' });
+User.hasMany(Task, { foreignKey: 'createdBy', as: 'createdTasks' });
+Task.belongsTo(User, { foreignKey: 'assignedTo', as: 'assignedUser' });
+Task.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+Task.hasMany(Comment, { foreignKey: 'taskId', as: 'comments' });
+Comment.belongsTo(Task, { foreignKey: 'taskId' });
+Comment.belongsTo(User, { foreignKey: 'userId', as: 'author' });
+
+
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
+const taskRoutes = require('./routes/taskRoutes');
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
@@ -41,6 +55,7 @@ app.get('/', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/tasks', taskRoutes);
 
 // ─── WebSocket connection ─────────────────────────────────────
 io.on('connection', (socket) => {
