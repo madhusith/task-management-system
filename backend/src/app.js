@@ -2,6 +2,8 @@
 require('dotenv').config();
 
 const { connectDB } = require('./config/database');
+const User = require('./models/User');
+const authRoutes = require('./routes/authRoutes');
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
@@ -35,6 +37,8 @@ app.use(cors({
 app.get('/', (req, res) => {
   res.json({ message: 'Task Management System API is running!' });
 });
+
+app.use('/api/auth', authRoutes);
 
 // ─── WebSocket connection ─────────────────────────────────────
 io.on('connection', (socket) => {
