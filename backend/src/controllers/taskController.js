@@ -2,6 +2,7 @@ const Task = require('../models/Task');
 const User = require('../models/User');
 const Comment = require('../models/Comment');
 const { Op } = require('sequelize');
+const { getIO } = require('../app');
 
 // GET /api/tasks
 const getAllTasks = async (req, res) => {
@@ -13,7 +14,6 @@ const getAllTasks = async (req, res) => {
     if (priority) where.priority = priority;
     if (assignedTo) where.assignedTo = assignedTo;
 
-    // Collaborators only see their assigned tasks
     if (req.user.role === 'collaborator') {
       where.assignedTo = req.user.id;
     }
@@ -52,7 +52,6 @@ const createTask = async (req, res) => {
       });
     }
 
-    // Validate assigned user exists
     if (assignedTo) {
       const assignedUser = await User.findByPk(assignedTo);
       if (!assignedUser) {
@@ -63,7 +62,6 @@ const createTask = async (req, res) => {
       }
     }
 
-    // Validate due date
     if (dueDate && new Date(dueDate) < new Date()) {
       return res.status(400).json({
         error: 'Bad Request',
@@ -79,6 +77,15 @@ const createTask = async (req, res) => {
       priority: priority || 'medium',
       createdBy: req.user.id
     });
+
+    // Notify assigned user in real-time
+    if (assignedTo) {
+      getIO().to(assignedTo).emit('notification', {
+        type: 'TASK_ASSIGNED',
+        message: `You have been assigned a new task: ${title}`,
+        taskId: task.id
+      });
+    }
 
     res.status(201).json({
       message: 'Task created successfully',
@@ -107,7 +114,8 @@ const updateTask = async (req, res) => {
       });
     }
 
-    // Collaborators can only update status
+    const oldStatus = task.status;
+
     if (req.user.role === 'collaborator') {
       if (task.assignedTo !== req.user.id) {
         return res.status(403).json({
@@ -118,6 +126,15 @@ const updateTask = async (req, res) => {
       await task.update({ status });
     } else {
       await task.update({ title, description, status, priority, dueDate, assignedTo });
+    }
+
+    // Notify creator when status changes
+    if (status && status !== oldStatus) {
+      getIO().to(task.createdBy).emit('notification', {
+        type: 'STATUS_CHANGED',
+        message: `Task "${task.title}" status changed to ${status}`,
+        taskId: task.id
+      });
     }
 
     res.json({ message: 'Task updated successfully', task });
@@ -180,6 +197,15 @@ const addComment = async (req, res) => {
       taskId: id,
       userId: req.user.id
     });
+
+    // Notify assigned user about new comment
+    if (task.assignedTo) {
+      getIO().to(task.assignedTo).emit('notification', {
+        type: 'NEW_COMMENT',
+        message: `New comment on task: ${task.title}`,
+        taskId: task.id
+      });
+    }
 
     res.status(201).json({
       message: 'Comment added successfully',
