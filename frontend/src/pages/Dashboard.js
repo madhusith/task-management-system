@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { io } from 'socket.io-client';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useAuth } from '../context/AuthContext';
 import { getTasks, updateTask, createTask, deleteTask } from '../services/api';
@@ -12,6 +13,9 @@ const COLUMNS = {
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
+  const socketRef = useRef(null);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -19,7 +23,16 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchTasks();
-  }, []);
+    socketRef.current = io('http://localhost:5001');
+    socketRef.current.emit('join', user.id);
+    socketRef.current.on('notification', (data) => {
+      setNotifications(prev => [data, ...prev]);
+      toast(data.message, { icon: '🔔' });
+    });
+    return () => {
+      socketRef.current.disconnect();
+    };
+  }, [user.id]);
 
   const fetchTasks = async () => {
     try {
@@ -86,7 +99,7 @@ const Dashboard = () => {
         <h1 className="text-xl font-bold text-gray-800">Task Manager</h1>
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-600">
-            {user?.name} 
+            {user?.name}
             <span className="ml-2 bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-medium">
               {user?.role}
             </span>
@@ -99,6 +112,42 @@ const Dashboard = () => {
               + New Task
             </button>
           )}
+
+          {/* Notification Bell */}
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative text-gray-500 hover:text-blue-500 text-xl"
+            >
+              🔔
+              {notifications.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                  {notifications.length}
+                </span>
+              )}
+            </button>
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border z-50">
+                <div className="p-3 border-b flex justify-between items-center">
+                  <span className="font-medium text-sm">Notifications</span>
+                  <button onClick={() => setNotifications([])} className="text-xs text-gray-400">
+                    Clear all
+                  </button>
+                </div>
+                {notifications.length === 0 ? (
+                  <p className="p-4 text-sm text-gray-400 text-center">No notifications</p>
+                ) : (
+                  notifications.map((n, i) => (
+                    <div key={i} className="p-3 border-b hover:bg-gray-50">
+                      <p className="text-sm text-gray-700">{n.message}</p>
+                      <p className="text-xs text-gray-400 mt-1">{n.type}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
           <button
             onClick={logout}
             className="text-gray-500 hover:text-red-500 text-sm"
