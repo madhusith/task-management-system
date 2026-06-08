@@ -2,7 +2,7 @@ const Task = require('../models/Task');
 const User = require('../models/User');
 const Comment = require('../models/Comment');
 const { Op } = require('sequelize');
-const { getIO } = require('../app');
+const { getIO } = require('../socket');
 
 // GET /api/tasks
 const getAllTasks = async (req, res) => {
