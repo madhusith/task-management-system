@@ -39,14 +39,15 @@ const Users = ({ onClose }) => {
   };
 
   const handleDeactivate = async (id) => {
-    try {
-      await deactivateUser(id);
-      toast.success('User deactivated!');
-      fetchUsers();
-    } catch (error) {
-      toast.error('Failed to deactivate user');
-    }
-  };
+  try {
+    await updateUser(id, { isActive: false });
+    toast.success('User deactivated!');
+    fetchUsers();
+  } catch (error) {
+    console.error('Deactivate error:', error);
+    toast.error('Failed to deactivate user');
+  }
+};
   const handleActivate = async (id) => {
   try {
     await updateUser(id, { isActive: true });

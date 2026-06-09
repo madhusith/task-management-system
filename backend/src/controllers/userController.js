@@ -115,7 +115,7 @@ const createUser = async (req, res) => {
 const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, role } = req.body;
+    const { name, role, isActive } = req.body;
 
     const user = await User.findByPk(id);
     if (!user) {
@@ -125,7 +125,12 @@ const updateUser = async (req, res) => {
       });
     }
 
-    await user.update({ name, role });
+const updateData = {};
+      if (name !== undefined) updateData.name = name;
+      if (role !== undefined) updateData.role = role;
+      if (isActive !== undefined) updateData.isActive = isActive;
+
+await user.update(updateData);
 
     res.json({
       message: 'User updated successfully',
