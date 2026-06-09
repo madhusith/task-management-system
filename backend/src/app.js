@@ -78,5 +78,6 @@ server.listen(PORT, () => {
 
 connectDB();
 
-const getIO = () => io;
-module.exports = { app, getIO };
+const { setIO } = require('./socket');
+setIO(io);
+module.exports = { app };

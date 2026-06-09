@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useAuth } from '../context/AuthContext';
-import { getTasks, updateTask, createTask, deleteTask } from '../services/api';
+import { getTasks, updateTask, createTask, deleteTask, getUsers } from '../services/api';
 import toast from 'react-hot-toast';
 
 const COLUMNS = {
@@ -17,12 +17,20 @@ const Dashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [tasks, setTasks] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [newTask, setNewTask] = useState({ title: '', description: '', priority: 'medium', dueDate: '' });
+  const [newTask, setNewTask] = useState({
+    title: '',
+    description: '',
+    priority: 'medium',
+    dueDate: '',
+    assignedTo: ''
+  });
 
   useEffect(() => {
     fetchTasks();
+    fetchUsers();
     socketRef.current = io('http://localhost:5001');
     socketRef.current.emit('join', user.id);
     socketRef.current.on('notification', (data) => {
@@ -45,6 +53,15 @@ const Dashboard = () => {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const response = await getUsers();
+      setUsers(response.data.users);
+    } catch (error) {
+      console.log('Could not fetch users');
+    }
+  };
+
   const getTasksByStatus = (status) => tasks.filter(t => t.status === status);
 
   const onDragEnd = async (result) => {
@@ -63,9 +80,12 @@ const Dashboard = () => {
   const handleCreateTask = async (e) => {
     e.preventDefault();
     try {
-      const response = await createTask(newTask);
+      const taskData = { ...newTask };
+      if (!taskData.assignedTo) delete taskData.assignedTo;
+      if (!taskData.dueDate) delete taskData.dueDate;
+      const response = await createTask(taskData);
       setTasks([...tasks, response.data.task]);
-      setNewTask({ title: '', description: '', priority: 'medium', dueDate: '' });
+      setNewTask({ title: '', description: '', priority: 'medium', dueDate: '', assignedTo: '' });
       setShowForm(false);
       toast.success('Task created!');
     } catch (error) {
@@ -89,7 +109,11 @@ const Dashboard = () => {
     return 'bg-green-100 text-green-700';
   };
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen">
+      Loading...
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -104,6 +128,7 @@ const Dashboard = () => {
               {user?.role}
             </span>
           </span>
+
           {(user?.role === 'admin' || user?.role === 'project_manager') && (
             <button
               onClick={() => setShowForm(true)}
@@ -130,7 +155,10 @@ const Dashboard = () => {
               <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border z-50">
                 <div className="p-3 border-b flex justify-between items-center">
                   <span className="font-medium text-sm">Notifications</span>
-                  <button onClick={() => setNotifications([])} className="text-xs text-gray-400">
+                  <button
+                    onClick={() => setNotifications([])}
+                    className="text-xs text-gray-400"
+                  >
                     Clear all
                   </button>
                 </div>
@@ -265,7 +293,7 @@ const Dashboard = () => {
                   <option value="high">High</option>
                 </select>
               </div>
-              <div className="mb-6">
+              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
                 <input
                   type="date"
@@ -273,6 +301,19 @@ const Dashboard = () => {
                   onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Assign To</label>
+                <select
+                  value={newTask.assignedTo}
+                  onChange={(e) => setNewTask({...newTask, assignedTo: e.target.value})}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Unassigned</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                  ))}
+                </select>
               </div>
               <div className="flex gap-3">
                 <button
