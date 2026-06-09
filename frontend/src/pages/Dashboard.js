@@ -3,6 +3,7 @@ import { io } from 'socket.io-client';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useAuth } from '../context/AuthContext';
 import { getTasks, updateTask, createTask, deleteTask, getUsers } from '../services/api';
+import Users from './Users';
 import toast from 'react-hot-toast';
 
 const COLUMNS = {
@@ -20,6 +21,7 @@ const Dashboard = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showUsers, setShowUsers] = useState(false);
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
@@ -135,6 +137,14 @@ const Dashboard = () => {
               className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
             >
               + New Task
+            </button>
+          )}
+          {user?.role === 'admin' && (
+            <button
+              onClick={() => setShowUsers(true)}
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700"
+            >
+              Manage Users
             </button>
           )}
 
@@ -334,6 +344,7 @@ const Dashboard = () => {
           </div>
         </div>
       )}
+      {showUsers && <Users onClose={() => setShowUsers(false)} />}
     </div>
   );
 };
